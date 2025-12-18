@@ -1,15 +1,18 @@
+--[[
+	User Interface Library
+	Made by Late
+	Modified to add improved animations and FPS counter
+]]
 --// Connections
 local GetService = game.GetService
 local Connect = game.Loaded.Connect
 local Wait = game.Loaded.Wait
 local Clone = game.Clone 
 local Destroy = game.Destroy 
-
 if (not game:IsLoaded()) then
 	local Loaded = game.Loaded
 	Loaded.Wait(Loaded);
 end
-
 --// Important 
 local Setup = {
 	Keybind = Enum.KeyCode.LeftControl,
@@ -17,27 +20,22 @@ local Setup = {
 	ThemeMode = "Dark",
 	Size = nil,
 }
-
 local Theme = { --// (Dark Theme)
 	--// Frames:
 	Primary = Color3.fromRGB(30, 30, 30),
 	Secondary = Color3.fromRGB(35, 35, 35),
 	Component = Color3.fromRGB(40, 40, 40),
 	Interactables = Color3.fromRGB(45, 45, 45),
-
 	--// Text:
 	Tab = Color3.fromRGB(200, 200, 200),
 	Title = Color3.fromRGB(240,240,240),
 	Description = Color3.fromRGB(200,200,200),
-
 	--// Outlines:
 	Shadow = Color3.fromRGB(0, 0, 0),
 	Outline = Color3.fromRGB(40, 40, 40),
-
 	--// Image:
 	Icon = Color3.fromRGB(220, 220, 220),
 }
-
 --// Services & Functions
 local Type, Blur = nil
 local LocalPlayer = GetService(game, "Players").LocalPlayer;
@@ -47,32 +45,41 @@ local Services = {
 	Run = GetService(game, "RunService");
 	Input = GetService(game, "UserInputService");
 }
-
 local Player = {
 	Mouse = LocalPlayer:GetMouse();
 	GUI = LocalPlayer.PlayerGui;
 }
 
+--// FPS Counter Variables
+local LastHeartbeat, HeartbeatCount, FpsLabel = tick(), 0, nil
+local function UpdateFps()
+	HeartbeatCount = HeartbeatCount + 1
+	local CurrentTime = tick()
+	if CurrentTime - LastHeartbeat >= 0.5 then -- Update every half second
+		local Fps = math.floor(HeartbeatCount / (CurrentTime - LastHeartbeat))
+		if FpsLabel then -- Only update if the label exists
+			FpsLabel.Text = "FPS: "..tostring(Fps)
+		end
+		LastHeartbeat = CurrentTime
+		HeartbeatCount = 0
+	end
+end
+
 local Tween = function(Object : Instance, Speed : number, Properties : {},  Info : { EasingStyle: Enum?, EasingDirection: Enum? })
 	local Style, Direction
-
 	if Info then
 		Style, Direction = Info["EasingStyle"], Info["EasingDirection"]
 	else
 		Style, Direction = Enum.EasingStyle.Sine, Enum.EasingDirection.Out
 	end
-
 	return Services.Tween:Create(Object, TweenInfo.new(Speed, Style, Direction), Properties):Play()
 end
-
 local SetProperty = function(Object: Instance, Properties: {})
 	for Index, Property in next, Properties do
 		Object[Index] = (Property);
 	end
-
 	return Object
 end
-
 local Multiply = function(Value, Amount)
 	local New = {
 		Value.X.Scale * Amount;
@@ -80,38 +87,31 @@ local Multiply = function(Value, Amount)
 		Value.Y.Scale * Amount;
 		Value.Y.Offset * Amount;
 	}
-
 	return UDim2.new(unpack(New))
 end
-
 local Color = function(Color, Factor, Mode)
 	Mode = Mode or Setup.ThemeMode
-
 	if Mode == "Light" then
 		return Color3.fromRGB((Color.R * 255) - Factor, (Color.G * 255) - Factor, (Color.B * 255) - Factor)
 	else
 		return Color3.fromRGB((Color.R * 255) + Factor, (Color.G * 255) + Factor, (Color.B * 255) + Factor)
 	end
 end
-
 local Drag = function(Canvas)
 	if Canvas then
 		local Dragging;
 		local DragInput;
 		local Start;
 		local StartPosition;
-
 		local function Update(input)
 			local delta = input.Position - Start
 			Canvas.Position = UDim2.new(StartPosition.X.Scale, StartPosition.X.Offset + delta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + delta.Y)
 		end
-
 		Connect(Canvas.InputBegan, function(Input)
 			if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch and not Type then
 				Dragging = true
 				Start = Input.Position
 				StartPosition = Canvas.Position
-
 				Connect(Input.Changed, function()
 					if Input.UserInputState == Enum.UserInputState.End then
 						Dragging = false
@@ -119,13 +119,11 @@ local Drag = function(Canvas)
 				end)
 			end
 		end)
-
 		Connect(Canvas.InputChanged, function(Input)
 			if Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch and not Type then
 				DragInput = Input
 			end
 		end)
-
 		Connect(Services.Input.InputChanged, function(Input)
 			if Input == DragInput and Dragging and not Type then
 				Update(Input)
@@ -133,21 +131,17 @@ local Drag = function(Canvas)
 		end)
 	end
 end
-
 Resizing = { 
 	TopLeft = { X = Vector2.new(-1, 0),   Y = Vector2.new(0, -1)};
 	TopRight = { X = Vector2.new(1, 0),    Y = Vector2.new(0, -1)};
 	BottomLeft = { X = Vector2.new(-1, 0),   Y = Vector2.new(0, 1)};
 	BottomRight = { X = Vector2.new(1, 0),    Y = Vector2.new(0, 1)};
 }
-
 Resizeable = function(Tab, Minimum, Maximum)
 	task.spawn(function()
 		local MousePos, Size, UIPos = nil, nil, nil
-
 		if Tab and Tab:FindFirstChild("Resize") then
 			local Positions = Tab:FindFirstChild("Resize")
-
 			for Index, Types in next, Positions:GetChildren() do
 				Connect(Types.InputBegan, function(Input)
 					if Input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -157,7 +151,6 @@ Resizeable = function(Tab, Minimum, Maximum)
 						UIPos = Tab.Position
 					end
 				end)
-
 				Connect(Types.InputEnded, function(Input)
 					if Input.UserInputType == Enum.UserInputType.MouseButton1 then
 						Type = nil
@@ -165,19 +158,15 @@ Resizeable = function(Tab, Minimum, Maximum)
 				end)
 			end
 		end
-
 		local Resize = function(Delta)
 			if Type and MousePos and Size and UIPos and Tab:FindFirstChild("Resize")[Type.Name] == Type then
 				local Mode = Resizing[Type.Name]
 				local NewSize = Vector2.new(Size.X + Delta.X * Mode.X.X, Size.Y + Delta.Y * Mode.Y.Y)
 				NewSize = Vector2.new(math.clamp(NewSize.X, Minimum.X, Maximum.X), math.clamp(NewSize.Y, Minimum.Y, Maximum.Y))
-
 				local AnchorOffset = Vector2.new(Tab.AnchorPoint.X * Size.X, Tab.AnchorPoint.Y * Size.Y)
 				local NewAnchorOffset = Vector2.new(Tab.AnchorPoint.X * NewSize.X, Tab.AnchorPoint.Y * NewSize.Y)
 				local DeltaAnchorOffset = NewAnchorOffset - AnchorOffset
-
 				Tab.Size = UDim2.new(0, NewSize.X, 0, NewSize.Y)
-
 				local NewPosition = UDim2.new(
 					UIPos.X.Scale, 
 					UIPos.X.Offset + DeltaAnchorOffset.X * Mode.X.X,
@@ -187,7 +176,6 @@ Resizeable = function(Tab, Minimum, Maximum)
 				Tab.Position = NewPosition
 			end
 		end
-
 		Connect(Player.Mouse.Move, function()
 			if Type then
 				Resize(Vector2.new(Player.Mouse.X, Player.Mouse.Y) - MousePos)
@@ -195,7 +183,6 @@ Resizeable = function(Tab, Minimum, Maximum)
 		end)
 	end)
 end
-
 --// Setup [UI]
 if (identifyexecutor) then
 	Screen = Services.Insert:LoadLocalAsset("rbxassetid://18490507748");
@@ -204,15 +191,12 @@ else
 	Screen = (script.Parent);
 	Blur = require(script.Blur)
 end
-
 Screen.Main.Visible = false
-
 xpcall(function()
 	Screen.Parent = game.CoreGui
 end, function() 
 	Screen.Parent = Player.GUI
 end)
-
 --// Tables for Data
 local Animations = {}
 local Blurs = {}
@@ -223,47 +207,52 @@ local StoredInfo = {
 	["Tabs"] = {}
 };
 
---// Animations [Window]
+--// Improved Animations [Window]
 function Animations:Open(Window: CanvasGroup, Transparency: number, UseCurrentSize: boolean)
-	local Original = (UseCurrentSize and Window.Size) or Setup.Size
-	local Multiplied = Multiply(Original, 1.1)
+	local OriginalScale = 0 -- Start invisible/scaling up
+	local UIScale = Window:WaitForChild("UIScale") or Instance.new("UIScale")
+	UIScale.Name = "UIScale"
+	UIScale.Parent = Window
+	UIScale.Scale = OriginalScale
+
+	local FinalScale = 1
+	local MultipliedScale = FinalScale * 1.1 -- Slightly larger scale for the effect
+
 	local Shadow = Window:FindFirstChildOfClass("UIStroke")
-
-
 	SetProperty(Shadow, { Transparency = 1 })
+
 	SetProperty(Window, {
-		Size = Multiplied,
 		GroupTransparency = 1,
 		Visible = true,
 	})
 
+	Tween(UIScale, .25, { Scale = MultipliedScale })
 	Tween(Shadow, .25, { Transparency = 0.5 })
+	task.wait(0.05) -- Small delay for visual separation between grow and shrink
+	Tween(UIScale, .2, { Scale = FinalScale })
 	Tween(Window, .25, {
-		Size = Original,
 		GroupTransparency = Transparency or 0,
 	})
 end
 
 function Animations:Close(Window: CanvasGroup)
-	local Original = Window.Size
-	local Multiplied = Multiply(Original, 1.1)
+	local UIScale = Window:FindFirstChild("UIScale") or Instance.new("UIScale")
+	UIScale.Name = "UIScale"
+	UIScale.Parent = Window
+	local CurrentScale = UIScale.Scale
+	local MultipliedScale = CurrentScale * 1.1 -- Slightly larger scale before disappearing
+
 	local Shadow = Window:FindFirstChildOfClass("UIStroke")
 
-	SetProperty(Window, {
-		Size = Original,
-	})
-
+	-- Reverse the scale animation for closing
+	Tween(UIScale, .2, { Scale = MultipliedScale })
 	Tween(Shadow, .25, { Transparency = 1 })
 	Tween(Window, .25, {
-		Size = Multiplied,
 		GroupTransparency = 1,
 	})
-
 	task.wait(.25)
-	Window.Size = Original
 	Window.Visible = false
 end
-
 
 function Animations:Component(Component: any, Custom: boolean)	
 	Connect(Component.InputBegan, function() 
@@ -273,7 +262,6 @@ function Animations:Component(Component: any, Custom: boolean)
 			Tween(Component, .25, { BackgroundColor3 = Color(Theme.Component, 5, Setup.ThemeMode) });
 		end
 	end)
-
 	Connect(Component.InputEnded, function() 
 		if Custom then
 			Tween(Component, .25, { Transparency = 1 });
@@ -282,27 +270,31 @@ function Animations:Component(Component: any, Custom: boolean)
 		end
 	end)
 end
-
 --// Library [Window]
-
-function Library:CreateWindow(Settings: { Title: string, Size: UDim2, Transparency: number, MinimizeKeybind: Enum.KeyCode?, Blurring: boolean, Theme: string })
+function Library:CreateWindow(Settings: { Title: string, Size: UDim2, Transparency: number, MinimizeKeybind: Enum.KeyCode?, Blurring: boolean, Theme: string, FpsCounter: boolean? })
 	local Window = Clone(Screen:WaitForChild("Main"));
 	local Sidebar = Window:FindFirstChild("Sidebar");
 	local Holder = Window:FindFirstChild("Main");
 	local BG = Window:FindFirstChild("BackgroundShadow");
 	local Tab = Sidebar:FindFirstChild("Tab");
-
 	local Options = {};
 	local Examples = {};
 	local Opened = true;
 	local Maximized = false;
 	local BlurEnabled = false
-
 	for Index, Example in next, Window:GetDescendants() do
 		if Example.Name:find("Example") and not Examples[Example.Name] then
 			Examples[Example.Name] = Example
 		end
 	end
+
+	--// Add UIGradient to main window background
+	local UIGradient = Instance.new("UIGradient")
+	UIGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 45)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 25, 30))
+	}
+	UIGradient.Parent = Window -- Apply to the main container frame
 
 	--// UI Blur & More
 	Drag(Window);
@@ -310,15 +302,30 @@ function Library:CreateWindow(Settings: { Title: string, Size: UDim2, Transparen
 	Setup.Transparency = Settings.Transparency or 0
 	Setup.Size = Settings.Size
 	Setup.ThemeMode = Settings.Theme or "Dark"
-
 	if Settings.Blurring then
 		Blurs[Settings.Title] = Blur.new(Window, 5)
 		BlurEnabled = true
 	end
-
 	if Settings.MinimizeKeybind then
 		Setup.Keybind = Settings.MinimizeKeybind
 	end
+
+	--// FPS Counter Setup
+	if Settings.FpsCounter then
+		FpsLabel = Instance.new("TextLabel")
+		FpsLabel.Name = "FpsCounter"
+		FpsLabel.Size = UDim2.new(0, 100, 0, 20)
+		FpsLabel.Position = UDim2.new(1, -20, 0, 20) -- Top right corner
+		FpsLabel.AnchorPoint = Vector2.new(1, 0) -- Anchor top right
+		FpsLabel.BackgroundTransparency = 1
+		FpsLabel.Text = "FPS: 0"
+		FpsLabel.TextColor3 = Theme.Title -- Use theme color
+		FpsLabel.TextScaled = true
+		FpsLabel.Font = Enum.Font.GothamSemibold
+		FpsLabel.Parent = game.CoreGui -- Parent to CoreGui to stay on top
+		Connect(Services.Run.Heartbeat, UpdateFps) -- Start updating FPS
+	end
+
 
 	--// Animate
 	local Close = function()
@@ -326,25 +333,21 @@ function Library:CreateWindow(Settings: { Title: string, Size: UDim2, Transparen
 			if BlurEnabled then
 				Blurs[Settings.Title].root.Parent = nil
 			end
-
 			Opened = false
 			Animations:Close(Window)
 			Window.Visible = false
 		else
 			Animations:Open(Window, Setup.Transparency)
 			Opened = true
-
 			if BlurEnabled then
 				Blurs[Settings.Title].root.Parent = workspace.CurrentCamera
 			end
 		end
 	end
-
 	for Index, Button in next, Sidebar.Top.Buttons:GetChildren() do
 		if Button:IsA("TextButton") then
 			local Name = Button.Name
 			Animations:Component(Button, true)
-
 			Connect(Button.MouseButton1Click, function() 
 				if Name == "Close" then
 					Close()
@@ -359,19 +362,235 @@ function Library:CreateWindow(Settings: { Title: string, Size: UDim2, Transparen
 				elseif Name == "Minimize" then
 					Opened = false
 					Window.Visible = false
-					Blurs[Settings.Title].root.Parent = nil
+					if BlurEnabled then
+						Blurs[Settings.Title].root.Parent = nil
+					end
 				end
 			end)
 		end
 	end
-
 	Services.Input.InputBegan:Connect(function(Input, Focused) 
 		if (Input == Setup.Keybind or Input.KeyCode == Setup.Keybind) and not Focused then
 			Close()
 		end
 	end)
-
 	--// Tab Functions
+	function Options:SetTab(Name: string)
+		for Index, Button in next, Tab:GetChildren() do
+			if Button:IsA("TextButton") then
+				local Opened, SameName = Button.Value, (Button.Name == Name);
+				local Padding = Button:FindFirstChildOfClass("UIPadding");
+				if SameName and not Opened.Value then
+					Tween(Padding, .25, { PaddingLeft = UDim.new(0, 25) });
+					Tween(Button, .25, { BackgroundTransparency = 0.9, Size = UDim2.new(1, -15, 0, 30) });
+					SetProperty(Opened, { Value = true });
+				elseif not SameName and Opened.Value then
+					Tween(Padding, .25, { PaddingLeft = UDim.new(0, 20) });
+					Tween(Button, .25, { BackgroundTransparency = 1, Size = UDim2.new(1, -44, 0, 30) });
+					SetProperty(Opened, { Value = false });
+				end
+			end
+		end
+		for Index, Main in next, Holder:GetChildren() do
+			if Main:IsA("CanvasGroup") then
+				local Opened, SameName = Main.Value, (Main.Name == Name);
+				local Scroll = Main:FindFirstChild("ScrollingFrame");
+				if SameName and not Opened.Value then
+					Opened.Value = true
+					Main.Visible = true
+					Tween(Main, .3, { GroupTransparency = 0 });
+					Tween(Scroll["UIPadding"], .3, { PaddingTop = UDim.new(0, 5) });
+				elseif not SameName and Opened.Value then
+					Opened.Value = false
+					Tween(Main, .15, { GroupTransparency = 1 });
+					Tween(Scroll["UIPadding"], .15, { PaddingTop = UDim.new(0, 15) });	
+					task.delay(.2, function()
+						Main.Visible = false
+					end)
+				end
+			end
+		end
+	end
+	function Options:AddTabSection(Settings: { Name: string, Order: number })
+		local Example = Examples["SectionExample"];
+		local Section = Clone(Example);
+		StoredInfo["Sections"][Settings.Name] = (Settings.Order);
+		SetProperty(Section, { 
+			Parent = Example.Parent,
+			Text = Settings.Name,
+			Name = Settings.Name,
+			LayoutOrder = Settings.Order,
+			Visible = true
+		});
+	end
+	function Options:AddTab(Settings: { Title: string, Icon: string, Section: string? })
+		if StoredInfo["Tabs"][Settings.Title] then 
+			error("[UI LIB]: A tab with the same name has already been created") 
+		end 
+		local Example, MainExample = Examples["TabButtonExample"], Examples["MainExample"];
+		local Section = StoredInfo["Sections"][Settings.Section];
+		local Main = Clone(MainExample);
+		local Tab = Clone(Example);
+		if not Settings.Icon then
+			Destroy(Tab["ICO"]);
+		else
+			SetProperty(Tab["ICO"], { Image = Settings.Icon });
+		end
+		StoredInfo["Tabs"][Settings.Title] = { Tab }
+		SetProperty(Tab["TextLabel"], { Text = Settings.Title });
+		SetProperty(Main, { 
+			Parent = MainExample.Parent,
+			Name = Settings.Title;
+		});
+		SetProperty(Tab, { 
+			Parent = Example.Parent,
+			LayoutOrder = Section or #StoredInfo["Sections"] + 1,
+			Name = Settings.Title;
+			Visible = true;
+		});
+		Tab.MouseButton1Click:Connect(function()
+			Options:SetTab(Tab.Name);
+		end)
+		return Main.ScrollingFrame
+	end
+	--// Notifications
+	function Options:Notify(Settings: { Title: string, Description: string, Duration: number }) 
+		local Notification = Clone(Components["Notification"]);
+		local Title, Description = Options:GetLabels(Notification);
+		local Timer = Notification["Timer"];
+		SetProperty(Title, { Text = Settings.Title });
+		SetProperty(Description, { Text = Settings.Description });
+		SetProperty(Notification, {
+			Parent = Screen["Frame"],
+		})
+		task.spawn(function() 
+			local Duration = Settings.Duration or 2
+			local Wait = task.wait;
+			Animations:Open(Notification, Setup.Transparency, true); Tween(Timer, Duration, { Size = UDim2.new(0, 0, 0, 4) });
+			Wait(Duration);
+			Animations:Close(Notification);
+			Wait(1);
+			Notification:Destroy();
+		end)
+	end
+	--// Component Functions
+	function Options:GetLabels(Component)
+		local Labels = Component:FindFirstChild("Labels")
+		return Labels.Title, Labels.Description
+	end
+	function Options:AddSection(Settings: { Name: string, Tab: Instance }) 
+		local Section = Clone(Components["Section"]);
+		SetProperty(Section, {
+			Text = Settings.Name,
+			Parent = Settings.Tab,
+			Visible = true,
+		})
+	end
+	function Options:AddButton(Settings: { Title: string, Description: string, Tab: Instance, Callback: any }) 
+		local Button = Clone(Components["Button"]);
+		local Title, Description = Options:GetLabels(Button);
+		Connect(Button.MouseButton1Click, Settings.Callback)
+		Animations:Component(Button)
+		SetProperty(Title, { Text = Settings.Title });
+		SetProperty(Description, { Text = Settings.Description });
+		SetProperty(Button, {
+			Name = Settings.Title,
+			Parent = Settings.Tab,
+			Visible = true,
+		})
+	end
+	function Options:AddInput(Settings: { Title: string, Description: string, Tab: Instance, Callback: any }) 
+		local Input = Clone(Components["Input"]);
+		local Title, Description = Options:GetLabels(Input);
+		local TextBox = Input["Main"]["Input"];
+		Connect(Input.MouseButton1Click, function() 
+			TextBox:CaptureFocus()
+		end)
+		Connect(TextBox.FocusLost, function() 
+			Settings.Callback(TextBox.Text)
+		end)
+		Animations:Component(Input)
+		SetProperty(Title, { Text = Settings.Title });
+		SetProperty(Description, { Text = Settings.Description });
+		SetProperty(Input, {
+			Name = Settings.Title,
+			Parent = Settings.Tab,
+			Visible = true,
+		})
+	end
+	function Options:AddToggle(Settings: { Title: string, Description: string, Default: boolean, Tab: Instance, Callback: any }) 
+		local Toggle = Clone(Components["Toggle"]);
+		local Title, Description = Options:GetLabels(Toggle);
+		local On = Toggle["Value"];
+		local Main = Toggle["Main"];
+		local Circle = Main["Circle"];
+		local Set = function(Value)
+			if Value then
+				Tween(Main,   .2, { BackgroundColor3 = Color3.fromRGB(153, 155, 255) });
+				Tween(Circle, .2, { BackgroundColor3 = Color3.fromRGB(255, 255, 255), Position = UDim2.new(1, -16, 0.5, 0) });
+			else
+				Tween(Main,   .2, { BackgroundColor3 = Theme.Interactables });
+				Tween(Circle, .2, { BackgroundColor3 = Theme.Primary, Position = UDim2.new(0, 3, 0.5, 0) });
+			end
+			On.Value = Value
+		end 
+		Connect(Toggle.MouseButton1Click, function()
+			local Value = not On.Value
+			Set(Value)
+			Settings.Callback(Value)
+		end)
+		Animations:Component(Toggle);
+		Set(Settings.Default);
+		SetProperty(Title, { Text = Settings.Title });
+		SetProperty(Description, { Text = Settings.Description });
+		SetProperty(Toggle, {
+			Name = Settings.Title,
+			Parent = Settings.Tab,
+			Visible = true,
+		})
+	end
+	function Options:AddKeybind(Settings: { Title: string, Description: string, Tab: Instance, Callback: any }) 
+		local Dropdown = Clone(Components["Keybind"]);
+		local Title, Description = Options:GetLabels(Dropdown);
+		local Bind = Dropdown["Main"].Options;
+		local Mouse = { Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton2, Enum.UserInputType.MouseButton3 }; 
+		local Types = { 
+			["Mouse"] = "Enum.UserInputType.MouseButton", 
+			["Key"] = "Enum.KeyCode." 
+		}
+		Connect(Dropdown.MouseButton1Click, function()
+			local Time = tick();
+			local Detect, Finished
+			SetProperty(Bind, { Text = "..." });
+			Detect = Connect(game.UserInputService.InputBegan, function(Key, Focused) 
+				local InputType = (Key.UserInputType);
+				if not Finished and not Focused then
+					Finished = (true)
+					if table.find(Mouse, InputType) then
+						Settings.Callback(Key);
+						SetProperty(Bind, {
+							Text = tostring(InputType):gsub(Types.Mouse, "MB")
+						})
+					elseif InputType == Enum.UserInputType.Keyboard then
+						Settings.Callback(Key);
+						SetProperty(Bind, {
+							Text = tostring(Key.KeyCode):gsub(Types.Key, "")
+						})
+					end
+				end 
+			end)
+		end)
+		Animations:Component(Dropdown);
+		SetProperty(Title, { Text = Settings.Title });
+		SetProperty(Description, { Text = Settings.Description });
+		SetProperty(Dropdown, {
+			Name = Settings.Title,
+			Parent = Settings.Tab,
+			Visible = true,
+		})
+	end
+	function Options:AddDropdown(Settings: { Title: string, Description: string, Options: {}, Tab: Instance, Callback: any }) 
+		local DropdownFunctions
 
 	function Options:SetTab(Name: string)
 		for Index, Button in next, Tab:GetChildren() do
